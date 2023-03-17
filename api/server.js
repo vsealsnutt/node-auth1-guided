@@ -1,14 +1,38 @@
-const path = require('path')
-const express = require('express')
+const path = require('path');
+const express = require('express');
 
-const usersRouter = require('./users/users-router.js')
+const session = require('express-session');
+const Store = require('connect-session-knex')(session);
 
-const server = express()
+const authRouter = require('./auth/auth-router');
+const usersRouter = require('./users/users-router.js');
+
+const server = express();
 
 server.use(express.static(path.join(__dirname, '../client')))
-server.use(express.json())
+server.use(express.json());
+server.use(session({
+  name: 'monkey',
+  secret: 'keep it secret',
+  cookie: {
+    maxAge: 1000 * 60 * 60,
+    secure: false,
+    httpOnly: false,
+  },
+  rolling: true,
+  resave: false,
+  saveUninitialized: false,
+  store: new Store({
+    knex: require('../database/db-config'),
+    tablename: 'sessions',
+    sidfieldname: 'sid',
+    createtable: true,
+    clearInterval: 1000 * 60 * 60
+  })
+}))
 
-server.use('/api/users', usersRouter)
+server.use('/api/auth', authRouter);
+server.use('/api/users', usersRouter);
 
 server.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, '../client', 'index.html'))
